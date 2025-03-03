@@ -1,6 +1,6 @@
 import json
-import logging
 from json import JSONDecodeError
+import logging
 import requests
 from .__version__ import __version__
 from binance.error import ClientError, ServerError
@@ -8,7 +8,7 @@ from binance.lib.utils import get_timestamp
 from binance.lib.utils import cleanNoneValue
 from binance.lib.utils import encoded_string
 from binance.lib.utils import check_required_parameter
-from binance.lib.authentication import hmac_hashing, rsa_signature
+from binance.lib.authentication import hmac_hashing, rsa_signature, ed25519_signature
 
 
 class API(object):
@@ -20,39 +20,49 @@ class API(object):
         proxies (obj, optional): Dictionary mapping protocol to the URL of the proxy. e.g. {'https': 'http://1.2.3.4:8080'}
         show_limit_usage (bool, optional): whether return limit usage(requests and/or orders). By default, it's False
         show_header (bool, optional): whether return the whole response header. By default, it's False
+        time_unit (str, optional): select a time unit. By default, it's None.
+        private_key (str, optional): RSA private key for RSA authentication
+        private_key_pass(str, optional): Password for PSA private key
     """
 
     def __init__(
         self,
-        key=None,
-        secret=None,
+        api_key=None,
+        api_secret=None,
         base_url=None,
         timeout=None,
         proxies=None,
         show_limit_usage=False,
         show_header=False,
+        time_unit=None,
         private_key=None,
-        private_key_passphrase=None,
+        private_key_pass=None,
     ):
-        self.key = key
-        self.secret = secret
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.base_url = base_url
         self.timeout = timeout
+        self.proxies = None
         self.show_limit_usage = False
         self.show_header = False
-        self.proxies = None
         self.private_key = private_key
-        self.private_key_pass = private_key_passphrase
+        self.private_key_pass = private_key_pass
         self.session = requests.Session()
         self.session.headers.update(
             {
                 "Content-Type": "application/json;charset=utf-8",
-                "User-Agent": "binance-futures-connector-python/" + __version__,
-                "X-MBX-APIKEY": key,
+                "User-Agent": "binance-connector-python/" + __version__,
+                "X-MBX-APIKEY": api_key,
             }
         )
 
-        if base_url:
-            self.base_url = base_url
+        if (
+            time_unit == "microsecond"
+            or time_unit == "millisecond"
+            or time_unit == "MILLISECOND"
+            or time_unit == "MICROSECOND"
+        ):
+            self.session.headers.update({"X-MBX-TIME-UNIT": time_unit})
 
         if show_limit_usage is True:
             self.show_limit_usage = True
@@ -63,6 +73,7 @@ class API(object):
         if type(proxies) is dict:
             self.proxies = proxies
 
+        self._logger = logging.getLogger(__name__)
         return
 
     def query(self, url_path, payload=None):
@@ -71,16 +82,16 @@ class API(object):
     def limit_request(self, http_method, url_path, payload=None):
         """limit request is for those endpoints require API key in the header"""
 
-        check_required_parameter(self.key, "apiKey")
+        check_required_parameter(self.api_key, "api_key")
         return self.send_request(http_method, url_path, payload=payload)
 
-    def sign_request(self, http_method, url_path, payload=None, special=False):
+    def sign_request(self, http_method, url_path, payload=None):
         if payload is None:
             payload = {}
         payload["timestamp"] = get_timestamp()
-        query_string = self._prepare_params(payload, special)
+        query_string = self._prepare_params(payload)
         payload["signature"] = self._get_sign(query_string)
-        return self.send_request(http_method, url_path, payload, special)
+        return self.send_request(http_method, url_path, payload)
 
     def limited_encoded_sign_request(self, http_method, url_path, payload=None):
         """This is used for some endpoints has special symbol in the url.
@@ -100,21 +111,21 @@ class API(object):
         )
         return self.send_request(http_method, url_path)
 
-    def send_request(self, http_method, url_path, payload=None, special=False):
+    def send_request(self, http_method, url_path, payload=None):
         if payload is None:
             payload = {}
         url = self.base_url + url_path
-        logging.debug("url: " + url)
+        self._logger.debug("url: " + url)
         params = cleanNoneValue(
             {
                 "url": url,
-                "params": self._prepare_params(payload, special),
+                "params": self._prepare_params(payload),
                 "timeout": self.timeout,
                 "proxies": self.proxies,
             }
         )
         response = self._dispatch_request(http_method)(**params)
-        logging.debug("raw response from server:" + response.text)
+        self._logger.debug("raw response from server:" + response.text)
         self._handle_exception(response)
 
         try:
@@ -144,13 +155,19 @@ class API(object):
 
         return data
 
-    def _prepare_params(self, params, special=False):
-        return encoded_string(cleanNoneValue(params), special)
+    def _prepare_params(self, params):
+        return encoded_string(cleanNoneValue(params))
 
     def _get_sign(self, payload):
-        if self.private_key:
-            return rsa_signature(self.private_key, payload, self.private_key_pass)
-        return hmac_hashing(self.secret, payload)
+        if self.private_key is not None:
+            try:
+                return ed25519_signature(
+                    self.private_key, payload, self.private_key_pass
+                )
+            except ValueError:
+                return rsa_signature(self.private_key, payload, self.private_key_pass)
+        else:
+            return hmac_hashing(self.api_secret, payload)
 
     def _dispatch_request(self, http_method):
         return {
@@ -158,7 +175,7 @@ class API(object):
             "DELETE": self.session.delete,
             "PUT": self.session.put,
             "POST": self.session.post,
-        }.get(http_method, self.session.get)
+        }.get(http_method, "GET")
 
     def _handle_exception(self, response):
         status_code = response.status_code
@@ -168,6 +185,13 @@ class API(object):
             try:
                 err = json.loads(response.text)
             except JSONDecodeError:
-                raise ClientError(status_code, None, response.text, response.headers)
-            raise ClientError(status_code, err["code"], err["msg"], response.headers)
+                raise ClientError(
+                    status_code, None, response.text, response.headers, None
+                )
+            error_data = None
+            if "data" in err:
+                error_data = err["data"]
+            raise ClientError(
+                status_code, err["code"], err["msg"], response.headers, error_data
+            )
         raise ServerError(status_code, response.text)

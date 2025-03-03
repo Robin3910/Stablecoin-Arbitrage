@@ -1,50 +1,22 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# 虚拟环境
-venv/
-ENV/
-.env
-.venv
-
-# 日志文件
-*.log
-logs/
-
-# IDE相关
-.idea/
-.vscode/
-*.swp
-*.swo
+build
+dist
+binance_connector.egg-info/
+__pycache__
+*.pyc
+.tox
+.python-version
 .DS_Store
 
-# 项目特定文件
-config.json
-secrets.json
-*.key
-*.pem
+# Environments
+.env
+.venv
+venv/
 
-# 临时文件
-*.tmp
-.temp/
-temp/ 
+# IDE
+.idea/
+.vscode/
+
+# document build
+docs/build/
+
+examples/*.ini

@@ -2,7 +2,6 @@ from typing import Optional
 
 import json
 import logging
-
 from binance.lib.utils import get_timestamp
 from binance.websocket.binance_socket_manager import BinanceSocketManager
 
@@ -21,6 +20,8 @@ class BinanceWebsocketClient:
         on_ping=None,
         on_pong=None,
         logger=None,
+        timeout=None,
+        time_unit=None,
         proxies: Optional[dict] = None,
     ):
         if not logger:
@@ -35,6 +36,8 @@ class BinanceWebsocketClient:
             on_ping,
             on_pong,
             logger,
+            timeout,
+            time_unit,
             proxies,
         )
 
@@ -52,6 +55,8 @@ class BinanceWebsocketClient:
         on_ping,
         on_pong,
         logger,
+        timeout,
+        time_unit,
         proxies,
     ):
         return BinanceSocketManager(
@@ -63,6 +68,8 @@ class BinanceWebsocketClient:
             on_ping=on_ping,
             on_pong=on_pong,
             logger=logger,
+            timeout=timeout,
+            time_unit=time_unit,
             proxies=proxies,
         )
 
