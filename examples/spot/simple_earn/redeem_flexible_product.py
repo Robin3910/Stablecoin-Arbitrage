@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 # api_key, api_secret = get_api_key()
 
-api_key = "0yGQaN84eHkF72gTM6vVjz4Zf1WMG6aBZo0wzz5whR5pFqaui0Q7z6qr16pf6z6N"
-api_secret = "PFIy1ygYl3ymNZKdzEf38UsqYkZz1ZmZnStQaGAuXeqisIZdBv2TsvJHthdefGZH"
+api_key = ""
+api_secret = ""
 
 client = Client(api_key, api_secret)
 
