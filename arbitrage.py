@@ -236,7 +236,7 @@ class UsdcArbitrage:
 
     def place_entry_orders(self, current_price: float):
         for i in range(self.config["MAX_ORDERS"]):
-            price = self.config["BASE_PRICE"] - i * self.config["PRICE_INTERVAL"]
+            price = math.floor((self.config["BASE_PRICE"] - i * self.config["PRICE_INTERVAL"]) * 10000) / 10000
             
             if price > current_price:
                 continue
