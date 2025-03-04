@@ -10,13 +10,16 @@ from examples.utils.prepare_env import get_api_key
 config_logging(logging, logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-api_key, api_secret = get_api_key()
+# api_key, api_secret = get_api_key()
+
+api_key = "0yGQaN84eHkF72gTM6vVjz4Zf1WMG6aBZo0wzz5whR5pFqaui0Q7z6qr16pf6z6N"
+api_secret = "PFIy1ygYl3ymNZKdzEf38UsqYkZz1ZmZnStQaGAuXeqisIZdBv2TsvJHthdefGZH"
 
 client = Client(api_key, api_secret)
 
 try:
     response = client.get_simple_earn_flexible_product_list(
-        asset="BTC", current=1, size=100, recvWindow=5000
+        asset="USDT", current=1, size=100, recvWindow=5000
     )
     logger.info(response)
 except ClientError as error:

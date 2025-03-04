@@ -8,5 +8,5 @@ config_logging(logging, logging.DEBUG)
 
 spot_client = Client(base_url="https://testnet.binance.vision")
 
-logging.info(spot_client.ticker_price("BTCUSDT"))
-logging.info(spot_client.ticker_price(symbols=["BTCUSDT", "BNBUSDT"]))
+logging.info(spot_client.ticker_price("USDCUSDT"))
+# logging.info(spot_client.ticker_price(symbols=["BTCUSDT", "BNBUSDT"]))
