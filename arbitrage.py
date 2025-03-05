@@ -133,10 +133,10 @@ class BalanceManager:
             self.last_balance_check = current_time
             current_balance = self.get_balance()
             required_balance = self.calculate_total_required_balance()
-            logger.info(f"当前余额: {current_balance} USDT|所需余额: {required_balance} USDT")
             if current_balance < required_balance:
                 # 需要赎回的金额（多赎回10%作为缓冲）
                 redeem_amount = round((required_balance - current_balance) * 1.1, 0)
+                logger.info(f"需要进行赎回|当前余额: {current_balance} USDT|所需余额: {required_balance} USDT|赎回金额: {redeem_amount} USDT")
                 try:
                     response = self.redeem_simple_earn(amount=redeem_amount)
                     send_wx_notification(title="从理财赎回", message=f"从理财赎回: {redeem_amount} USDT|response: {response}")
@@ -165,6 +165,7 @@ class UsdcArbitrage:
         self.symbol = symbol
         self.config = CONFIG["SYMBOLS"][symbol]  # 获取该品种的具体配置
         self.position_map: Dict[float, OrderInfo] = {}
+        self.current_base_price = self.config["BASE_PRICE"]  # 添加当前base_price变量
 
     # 批量获取订单
     def get_open_orders(self):
@@ -234,14 +235,44 @@ class UsdcArbitrage:
         response = spot_client.ticker_price(self.symbol)
         return float(response["price"])
 
+    def cancel_order(self, order_id: str):
+        """撤销订单"""
+        try:
+            response = spot_client.cancel_order(symbol=self.symbol, orderId=order_id)
+            logger.info(f"{self.symbol}撤销订单成功: {response}")
+            return True
+        except ClientError as error:
+            logger.error(f"{self.symbol}撤销订单失败: {error}")
+            return False
+
+    def update_base_price(self, current_price: float):
+        """更新base_price并处理相关订单"""
+        # 确保base_price不超过1
+        if current_price > 1:
+            current_price = 1
+        if current_price > self.current_base_price:
+            old_base_price = self.current_base_price
+            self.current_base_price = current_price
+            logger.info(f"{self.symbol} base_price从{old_base_price}上移至{current_price}")
+            
+            # 撤销距离新base_price过远的订单
+            for price, order_info in list(self.position_map.items()):
+                if price <= self.current_base_price - (balance_buffer * self.config["PRICE_INTERVAL"]):
+                    if order_info.status == OrderStatus.ENTRY_PLACED:
+                        if self.cancel_order(order_info.entry_order_id):
+                            del self.position_map[price]
+                    elif order_info.status == OrderStatus.WAITING_PROFIT:
+                        if self.cancel_order(order_info.exit_order_id):
+                            del self.position_map[price]
+
     def place_entry_orders(self, current_price: float):
         for i in range(self.config["MAX_ORDERS"]):
-            price = math.floor((self.config["BASE_PRICE"] - i * self.config["PRICE_INTERVAL"]) * 10000) / 10000
+            price = math.floor((self.current_base_price - i * self.config["PRICE_INTERVAL"]) * 10000) / 10000  # 使用current_base_price
             
             if price > current_price:
                 continue
                 
-            if price <= self.config["BASE_PRICE"] - (balance_buffer * self.config["PRICE_INTERVAL"]):
+            if price <= self.current_base_price - (balance_buffer * self.config["PRICE_INTERVAL"]):  # 使用current_base_price
                 break
             
             # 只有在无订单状态下才需要挂入场单
@@ -256,6 +287,7 @@ class UsdcArbitrage:
 
     def check_and_update_orders(self):
         current_price = self.get_current_price()
+        self.update_base_price(current_price)  # 添加base_price更新逻辑
         order_list = self.get_open_orders()
         
         for price, order_info in list(self.position_map.items()):
