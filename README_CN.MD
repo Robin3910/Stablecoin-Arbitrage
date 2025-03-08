@@ -1,8 +1,7 @@
 
 # Binance 稳定币USDC/USDT，FDUSD/USDT网格交易机器人
 
-[English](README.md#binance-stablecoin-grid-trading-bot-for-usdcusdt-fdusdusdt) | [中文](README_CN.md)
-
+[English](https://github.com/Robin3910/Stablecoin-Arbitrage/blob/main/README.md) | [中文](https://github.com/Robin3910/Stablecoin-Arbitrage/blob/main/README_CN.MD)
 
 这是一个基于 Binance API 的自动化稳定币网格交易机器人,支持多币种网格交易和自动理财管理。
 

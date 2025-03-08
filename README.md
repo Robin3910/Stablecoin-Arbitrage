@@ -1,6 +1,6 @@
 # Binance Stablecoin Arbitrage Trading Bot for USDC/USDT, FDUSD/USDT
 
-[English](README.md#binance-stablecoin-grid-trading-bot-for-usdcusdt-fdusdusdt) | [中文](README_CN.md)
+[English](https://github.com/Robin3910/Stablecoin-Arbitrage/blob/main/README.md) | [中文](https://github.com/Robin3910/Stablecoin-Arbitrage/blob/main/README_CN.MD)
 
 This is an automated grid trading bot for stablecoins based on the Binance API, supporting multi-pair grid trading and automated financial management.
 
